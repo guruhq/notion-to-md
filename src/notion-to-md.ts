@@ -205,10 +205,15 @@ export class NotionToMarkdown {
         continue;
       }
 
+      // @ts-ignore
+      if (block.type === "unsupported" || block.type === "ai_block") {
+        continue;
+      }
+
       if ("has_children" in block && block.has_children) {
         const block_id =
           block.type == "synced_block" &&
-          block.synced_block?.synced_from?.block_id
+            block.synced_block?.synced_from?.block_id
             ? block.synced_block.synced_from.block_id
             : block.id;
         // Get children of this block.

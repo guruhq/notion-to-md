@@ -12,10 +12,12 @@ import {
   ConfigurationOptions,
   MdStringObject,
   BlockType,
+  BlockCounter,
 } from "./types";
 import * as md from "./utils/md";
 import { getBlockChildren } from "./utils/notion";
 
+const DEFAULT_BLOCK_COUNTER: BlockCounter = { blockCount: 0, maxBlocks: 1000000 }
 /**
  * Converts a Notion page to Markdown.
  */
@@ -163,16 +165,17 @@ export class NotionToMarkdown {
    */
   async pageToMarkdown(
     id: string,
-    totalPage: number | null = null
+    totalPage: number | null = null,
+    blockCounter: BlockCounter = DEFAULT_BLOCK_COUNTER
   ): Promise<MdBlock[]> {
     if (!this.notionClient) {
       throw new Error(
         "notion client is not provided, for more details check out https://github.com/souvikinator/notion-to-md"
       );
     }
-    const blocks = await getBlockChildren(this.notionClient, id, totalPage);
+    const blocks = await getBlockChildren(this.notionClient, id, totalPage, blockCounter);
 
-    const parsedData = await this.blocksToMarkdown(blocks);
+    const parsedData = await this.blocksToMarkdown(blocks, null, [], blockCounter);
 
     return parsedData;
   }
@@ -187,7 +190,8 @@ export class NotionToMarkdown {
   async blocksToMarkdown(
     blocks?: ListBlockChildrenResponseResults,
     totalPage: number | null = null,
-    mdBlocks: MdBlock[] = []
+    mdBlocks: MdBlock[] = [],
+    blockCounter: BlockCounter = DEFAULT_BLOCK_COUNTER
   ): Promise<MdBlock[]> {
     if (!this.notionClient) {
       throw new Error(
@@ -220,14 +224,15 @@ export class NotionToMarkdown {
         let child_blocks = await getBlockChildren(
           this.notionClient,
           block_id,
-          totalPage
+          totalPage,
+          blockCounter
         );
 
         // Push this block to mdBlocks.
         mdBlocks.push({
           type: block.type,
           blockId: block.id,
-          parent: await this.blockToMarkdown(block),
+          parent: await this.blockToMarkdown(block, blockCounter),
           children: [],
         });
 
@@ -241,14 +246,15 @@ export class NotionToMarkdown {
           await this.blocksToMarkdown(
             child_blocks,
             totalPage,
-            mdBlocks[l - 1].children
+            mdBlocks[l - 1].children,
+            blockCounter
           );
         }
 
         continue;
       }
 
-      let tmp = await this.blockToMarkdown(block);
+      let tmp = await this.blockToMarkdown(block, blockCounter);
       mdBlocks.push({
         // @ts-ignore
         type: block.type,
@@ -265,7 +271,7 @@ export class NotionToMarkdown {
    * @param {ListBlockChildrenResponseResult} block - single notion block
    * @returns {string} corresponding markdown string of the passed block
    */
-  async blockToMarkdown(block: ListBlockChildrenResponseResult) {
+  async blockToMarkdown(block: ListBlockChildrenResponseResult, blockCounter: BlockCounter) {
     if (typeof block !== "object" || !("type" in block)) return "";
 
     let parsedData = "";
@@ -401,7 +407,7 @@ export class NotionToMarkdown {
         const { id, has_children } = block;
         let tableArr: string[][] = [];
         if (has_children) {
-          const tableRows = await getBlockChildren(this.notionClient, id, 100);
+          const tableRows = await getBlockChildren(this.notionClient, id, 100, blockCounter);
           let rowsPromise = tableRows?.map(async (row) => {
             const { type } = row as any;
             const cells = (row as any)[type]["cells"];
@@ -416,7 +422,7 @@ export class NotionToMarkdown {
                 await this.blockToMarkdown({
                   type: "paragraph",
                   paragraph: { rich_text: cell },
-                } as ListBlockChildrenResponseResult)
+                } as ListBlockChildrenResponseResult, blockCounter)
             );
 
             const cellStringArr = await Promise.all(cellStringPromise);
@@ -513,7 +519,7 @@ export class NotionToMarkdown {
           const callout_children_object = await getBlockChildren(
             this.notionClient,
             id,
-            100
+            100, blockCounter
           );
 
           // // parse children blocks to md object

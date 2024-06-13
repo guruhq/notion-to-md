@@ -1,4 +1,5 @@
 import { NotionToMarkdown } from "./notion-to-md";
+import { BlockCounter } from "./types";
 
 describe("setCustomTransformer", () => {
   test("blockToMarkdown sends parsing block to customTransformer", () => {
@@ -10,7 +11,7 @@ describe("setCustomTransformer", () => {
       name: "test",
       type: "test",
       test: { foo: "bar" },
-    } as any);
+    } as any, { maxBlocks: 10000 } as BlockCounter);
     expect(customTransformerMock).toHaveBeenCalledWith(
       expect.objectContaining({
         type: "test",
@@ -29,7 +30,7 @@ describe("setCustomTransformer", () => {
       name: "test",
       type: "test",
       test: { foo: "bar" },
-    } as any);
+    } as any, { maxBlocks: 10000 } as BlockCounter);
     expect(customTransformerMock1).not.toHaveBeenCalled();
     expect(customTransformerMock2).toHaveBeenCalled();
   });
@@ -46,7 +47,7 @@ describe("setCustomTransformer", () => {
       type: "divider",
       divider: {},
       object: "block",
-    });
+    }, { maxBlocks: 10000 } as BlockCounter);
     expect(md).toBe("hello");
   });
 
@@ -62,7 +63,7 @@ describe("setCustomTransformer", () => {
       type: "divider",
       divider: {},
       object: "block",
-    });
+    }, { maxBlocks: 10000 } as BlockCounter);
     expect(md).toBe("---");
   });
 });

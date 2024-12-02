@@ -173,7 +173,14 @@ export class NotionToMarkdown {
         "notion client is not provided, for more details check out https://github.com/souvikinator/notion-to-md"
       );
     }
-    const blocks = await getBlockChildren(this.notionClient, id, totalPage, blockCounter);
+    let blocks = null;
+    try {
+      blocks = await getBlockChildren(this.notionClient, id, totalPage, blockCounter);
+    }
+    catch (error) {
+      console.log(`couldn't get block children for ${id} with error ${error}`);
+      return [];
+    }
 
     const parsedData = await this.blocksToMarkdown(blocks, null, [], blockCounter);
 
@@ -221,12 +228,19 @@ export class NotionToMarkdown {
             ? block.synced_block.synced_from.block_id
             : block.id;
         // Get children of this block.
-        let child_blocks = await getBlockChildren(
-          this.notionClient,
-          block_id,
-          totalPage,
-          blockCounter
-        );
+        let child_blocks = null;
+        try {
+          child_blocks = await getBlockChildren(
+            this.notionClient,
+            block_id,
+            totalPage,
+            blockCounter
+          );
+        }
+        catch (error) {
+          console.log(`unable to get block children for ${block.type}`);
+          throw error;
+        }
 
         // Push this block to mdBlocks.
         mdBlocks.push({
